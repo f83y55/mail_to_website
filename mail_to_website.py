@@ -1,28 +1,27 @@
 from imap_tools import MailBox, AND
+import datetime
 # $ pip install imap-tools
 import os
 import json
 import pprint
 
 json_pswd_filename = "pswd.json"
+json_team_filename = "team.json"
+
+class Publi :
+    def __init__(self, msg):
+        self.content = {
+                "title" : msg.subject,
+                "authors" : [msg.from_, *msg.cc],
+                "date" : str(msg.date),
+                "content_text" : msg.text,
+                "content_html" : msg.html,
+                }
  
-def input_account_info() -> dict:
-    """Get email account information"""
-    data = {}
-    data["server"] = input("Enter webmail imap server address :\n")
-    data["port"] = input("Enter email imap port :\n")
-    if not data["port"] :
-        data["port"] = 993
-    else :
-        try :
-            data["port"] = int(data["port"])
-        except :
-            data["port"] = 993
-    data["user"] = input("Enter username :\n")
-    data["password"] = input("Enter password :\n")
-    return data
+    def to_json(self) :
+        json_save(self.content, os.path.join("publi", f"{self.content['date']} - {self.content['title']}.json"))
 
-
+ 
 def json_load(filename:str=json_pswd_filename) -> dict:
     """Read a json file containing email account information"""
     try :
@@ -49,23 +48,41 @@ def json_save(data:dict, filename:str=json_pswd_filename) :
     except Exception as e :
         print(f"Exception : {e}")
 
+
+def input_account_info() -> dict:
+    """Get email account information"""
+    data = {}
+    data["server"] = input("Enter webmail imap server address :\n")
+    data["port"] = input("Enter email imap port :\n")
+    if not data["port"] :
+        data["port"] = 993
+    else :
+        try :
+            data["port"] = int(data["port"])
+        except :
+            data["port"] = 993
+    data["user"] = input("Enter username :\n")
+    data["password"] = input("Enter password :\n")
+    return data
+
 def mailbox_connect(account_data:dict={}, filename:str=json_pswd_filename):
     """Imap connexion"""
-    text = ""
     if not account_data:
         account_data = json_load(filename)
     # Login :
     mb = MailBox(account_data["server"]).login(account_data["user"], account_data["password"])
-    messages = mb.fetch()
-    files = []
-    for msg in messages:
+    return [Publi(msg) for msg in mb.fetch()]
+    #messages = mb.fetch()
+    #list_messages = []
+    #files = []
+    #for msg in messages:
         # Print form and subject
-        print(msg.from_, ': ', msg.subject)
+        #print(msg.from_, ': ', msg.subject)
         # Print the plain text (if there is one)
-        text += msg.text
+        #text += msg.text
         # Add attachments
-        files += [att.payload for att in msg.attachments if att.filename.endswith('.pdf')]
-    return text
+        #files += [att.payload for att in msg.attachments if att.filename.endswith('.pdf')]
+    #return text
 
 def empty_line(st:str):
     """Show if a line only contains tabs and spaces, ie is blank"""
@@ -98,4 +115,7 @@ def html_to_file(content:str, filename:str="html_out.html"):
 
 
 if __name__ == "__main__":
-    html_to_file(text_to_html(mailbox_connect()))
+    publications = mailbox_connect()
+    for publi in publications :
+        publi.to_json()
+        
