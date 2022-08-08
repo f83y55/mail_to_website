@@ -7,6 +7,10 @@ import pprint
 
 json_pswd_filename = "pswd.json"
 json_team_filename = "team.json"
+site_foldername = "site"
+publi_foldername = "publi"
+
+
 
 class Publi :
     def __init__(self, msg):
@@ -14,12 +18,18 @@ class Publi :
                 "title" : msg.subject,
                 "authors" : [msg.from_, *msg.cc],
                 "date" : str(msg.date),
-                "content_text" : msg.text,
-                "content_html" : msg.html,
+                "text" : msg.text,
+                "html" : msg.html,
+                "filename" : valid_filename(f"{str(msg.date)[:19]} - {msg.subject}"), 
                 }
  
     def to_json(self) :
-        json_save(self.content, os.path.join("publi", f"{self.content['date']} - {self.content['title']}.json"))
+        json_save(self.content, os.path.join(publi_foldername, f"{self.content['filename']}.json"))
+
+def valid_filename(st:str="") -> str:
+    st = st.replace('/', '-')
+    st = st.replace(':', '-')
+    return "".join(x for x in st if x.isalnum() or x in "._- ()[]")[:255]
 
  
 def json_load(filename:str=json_pswd_filename) -> dict:
@@ -72,17 +82,7 @@ def mailbox_connect(account_data:dict={}, filename:str=json_pswd_filename):
     # Login :
     mb = MailBox(account_data["server"]).login(account_data["user"], account_data["password"])
     return [Publi(msg) for msg in mb.fetch()]
-    #messages = mb.fetch()
-    #list_messages = []
-    #files = []
-    #for msg in messages:
-        # Print form and subject
-        #print(msg.from_, ': ', msg.subject)
-        # Print the plain text (if there is one)
-        #text += msg.text
-        # Add attachments
-        #files += [att.payload for att in msg.attachments if att.filename.endswith('.pdf')]
-    #return text
+
 
 def empty_line(st:str):
     """Show if a line only contains tabs and spaces, ie is blank"""
@@ -118,4 +118,5 @@ if __name__ == "__main__":
     publications = mailbox_connect()
     for publi in publications :
         publi.to_json()
+        print(publi.content["html"])
         
